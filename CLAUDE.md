@@ -6,9 +6,15 @@ A web app for Kasetsart University (@ku.th) where teachers assign digital badges
 
 ## Current status
 
-All code has been written. **The app has not been run yet** — Node.js was not installed on the machine when the project was scaffolded. The next step is to install Node.js and do the initial setup.
+**App is running.** Node.js (v24), npm, and the database are all set up. To resume:
 
-## First-time setup (do this once)
+```bash
+npm run dev
+```
+
+Then open http://localhost:3000 and sign in with your `@ku.th` Google account.
+
+## First-time setup (already done — kept for reference)
 
 ```bash
 # 1. Install Node.js (PowerShell, then restart terminal)
@@ -59,8 +65,9 @@ Only `@ku.th` Google accounts can log in at all (enforced in `src/lib/auth.ts`).
 **Teacher creates a course:**
 1. `/teacher/courses` → New → fill name/description
 2. Course page → add Badge (upload image, name, missions list)
-3. Course page → Students tab → Add Student → search by email → Enroll
-4. Students tab → expand a student → Award/revoke individual badges
+3. Course page → Badges tab → pencil icon to edit, trash icon to delete a badge
+4. Course page → Students tab → Add Student → search by email → Enroll
+5. Students tab → expand a student → Award/revoke individual badges
 
 **Student tracks progress:**
 1. `/courses` → see all enrolled courses with progress bars
@@ -94,7 +101,7 @@ badge_app/
 │       ├── teacher/courses/page.tsx          # Teacher: course list
 │       ├── teacher/courses/new/              # Teacher: create course form
 │       ├── teacher/courses/[id]/page.tsx     # Teacher: course detail (badges + students)
-│       ├── teacher/courses/[id]/teacher-course-client.tsx  # Client: award badges, enroll students
+│       ├── teacher/courses/[id]/teacher-course-client.tsx  # Client: award badges, enroll students, edit/delete badges
 │       ├── teacher/courses/[id]/badges/new/  # Teacher: create badge form (with image upload)
 │       ├── admin/users/page.tsx              # Admin: user list
 │       ├── admin/users/admin-users-client.tsx # Client: role switcher
@@ -118,7 +125,7 @@ badge_app/
 
 | Tool | Version | Purpose |
 |---|---|---|
-| Next.js | 14.2 | Framework (App Router) |
+| Next.js | 16.2 | Framework (App Router) |
 | TypeScript | 5 | Type safety |
 | Tailwind CSS | 3.4 | Styling |
 | NextAuth.js | 4.x | Google OAuth + sessions |
