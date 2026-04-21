@@ -2,53 +2,62 @@
 
 ## What this is
 
-A web app for Kasetsart University (@ku.th) where teachers assign digital badges to students in courses. Students track their badge progress. Built with Next.js 14, Prisma/SQLite, and Google OAuth.
+A web app for Kasetsart University (@ku.th) where teachers assign digital badges to students in courses. Students track their badge progress. Built with Next.js, Prisma/PostgreSQL, and Google OAuth.
 
 ## Current status
 
-**App is running.** Node.js (v24), npm, and the database are all set up. To resume:
+**App is live on Railway and running locally.**
+
+- Production: Railway (auto-deploys from `master` branch on GitHub)
+- Local dev: `npm run dev` → http://localhost:3000
+
+Local dev uses the Railway PostgreSQL database (public URL in `.env.local`).
+
+## Local dev
 
 ```bash
 npm run dev
 ```
 
-Then open http://localhost:3000 and sign in with your `@ku.th` Google account.
-
-## First-time setup (already done — kept for reference)
-
-```bash
-# 1. Install Node.js (PowerShell, then restart terminal)
-winget install OpenJS.NodeJS.LTS
-
-# 2. Install dependencies
-npm install
-
-# 3. Push the database schema (creates prisma/dev.db)
-npm run db:push
-
-# 4. Seed the admin user (reads ADMIN_EMAIL from .env.local)
-npm run db:seed
-
-# 5. Start the dev server
-npm run dev
-```
-
-Then open http://localhost:3000
+Sign in with your `@ku.th` Google account. Local dev shares the Railway PostgreSQL database.
 
 ## Environment variables (.env.local)
 
-Fill these in before running — the file already exists with placeholders:
-
-| Variable | Where to get it |
+| Variable | Value |
 |---|---|
 | `GOOGLE_CLIENT_ID` | Google Cloud Console → APIs & Services → Credentials |
 | `GOOGLE_CLIENT_SECRET` | Same as above |
-| `NEXTAUTH_SECRET` | Any random string (run `openssl rand -base64 32`) |
+| `NEXTAUTH_SECRET` | Any random string (`openssl rand -base64 32`) |
 | `NEXTAUTH_URL` | `http://localhost:3000` for local dev |
-| `ADMIN_EMAIL` | Your own @ku.th email — this account becomes admin |
-| `DATABASE_URL` | `file:./dev.db` (SQLite, no setup needed) |
+| `ADMIN_EMAIL` | `vacharapat.m@ku.th` |
+| `DATABASE_URL` | Railway PostgreSQL public URL (TCP proxy URL from Railway → PostgreSQL service → Settings → Networking) |
 
-Google OAuth redirect URI to add: `http://localhost:3000/api/auth/callback/google`
+Google OAuth redirect URIs to add:
+- `http://localhost:3000/api/auth/callback/google` (local)
+- `https://your-railway-url.up.railway.app/api/auth/callback/google` (production)
+
+## Railway deployment
+
+Deployed at: configure via Railway dashboard (Settings → Networking → Generate Domain)
+
+On every deploy, Railway automatically runs:
+```
+npx prisma db push && npx tsx prisma/seed.ts && npm start
+```
+(configured in `railway.toml`)
+
+Railway environment variables needed:
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `ADMIN_EMAIL`
+- `NEXTAUTH_URL` = your Railway public URL
+- `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Railway internal reference)
+
+## Promoting a user to admin
+
+The seed runs automatically on deploy but requires the user to have logged in via Google first. If you need to manually promote a user:
+
+```bash
+dotenv -e .env.local -- node -e "const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.user.update({where:{email:'vacharapat.m@ku.th'},data:{role:'ADMIN'}}).then(u=>console.log('Done:',u.email,u.role)).catch(console.error).finally(()=>p.\$disconnect())"
+```
 
 ## Roles
 
@@ -58,7 +67,7 @@ Google OAuth redirect URI to add: `http://localhost:3000/api/auth/callback/googl
 | TEACHER | Admin promotes a user | Create courses, add badges, enroll students, award badges |
 | STUDENT | Default for all @ku.th logins | View enrolled courses, track badge progress |
 
-Only `@ku.th` Google accounts can log in at all (enforced in `src/lib/auth.ts`).
+Only `@ku.th` and `*.ku.th` Google accounts can log in (enforced in `src/lib/auth.ts`).
 
 ## Key flows
 
@@ -115,9 +124,10 @@ badge_app/
 │           ├── badges/[id]/route.ts          # PATCH, DELETE
 │           ├── badges/[id]/award/route.ts    # POST (award), DELETE (revoke)
 │           └── admin/users/route.ts          # GET (all users), PATCH (change role)
-├── public/uploads/         # Badge images stored here
-├── .env.local              # Secrets — fill this in before running
-├── SETUP.md                # Quick setup guide
+├── public/uploads/         # Badge images stored here (ephemeral on Railway)
+├── railway.toml            # Railway deploy config: db push + seed + start
+├── .npmrc                  # legacy-peer-deps=true (eslint peer dep workaround)
+├── .env.local              # Secrets — never commit this
 └── CLAUDE.md               # This file
 ```
 
@@ -130,7 +140,7 @@ badge_app/
 | Tailwind CSS | 3.4 | Styling |
 | NextAuth.js | 4.x | Google OAuth + sessions |
 | Prisma | 5.x | ORM |
-| SQLite | — | Database (file: prisma/dev.db) |
+| PostgreSQL | — | Database (Railway managed) |
 | lucide-react | — | Icons |
 
 ## Design notes
@@ -142,8 +152,7 @@ badge_app/
 
 ## Known limitations / future work
 
-- Badge images are stored on the local filesystem (`/public/uploads/`). For production, replace with cloud storage (e.g. Cloudinary or S3).
-- SQLite is fine for development/small scale. For production, switch `provider` in `prisma/schema.prisma` to `postgresql` and update `DATABASE_URL`.
+- Badge images are stored on the local filesystem (`/public/uploads/`). On Railway these are lost on redeploy — replace with Cloudinary or S3 for production.
 - No email notifications when a badge is awarded.
 - Teachers can only see their own courses (admins see all).
 - Students cannot self-enroll; teachers must add them manually.
