@@ -16,7 +16,7 @@ export default async function CoursesPage() {
     include: {
       course: {
         include: {
-          teacher: { select: { name: true } },
+          teachers: { select: { name: true } },
           badges: {
             include: {
               studentBadges: { where: { studentId: session.user.id } },
@@ -64,7 +64,7 @@ export default async function CoursesPage() {
                         {course.description}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-1">by {course.teacher.name}</p>
+                    <p className="text-xs text-gray-400 mt-1">by {course.teachers.map((t) => t.name).join(", ")}</p>
                   </div>
                   <div className="flex items-center gap-1 text-primary bg-blue-50 px-2 py-1 rounded-lg shrink-0 ml-3">
                     <Award size={14} />
