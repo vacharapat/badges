@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap } from "lucide-react";
+import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X } from "lucide-react";
 import { BadgeModal } from "@/components/BadgeModal";
 import { cn } from "@/lib/utils";
+import { parseMissions } from "@/lib/utils";
 
 interface Badge {
   id: string;
@@ -41,8 +42,18 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [localStudents, setLocalStudents] = useState(students);
-  const [localBadges] = useState(badges);
+  const [localBadges, setLocalBadges] = useState(badges);
   const [localTeachers, setLocalTeachers] = useState(teachers);
+
+  // Edit badge modal state
+  const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editImagePreview, setEditImagePreview] = useState("");
+  const [editMissions, setEditMissions] = useState<string[]>([]);
+  const [editUploading, setEditUploading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
   // For adding students
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -56,6 +67,77 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
   const [teacherResults, setTeacherResults] = useState<Teacher[]>([]);
   const [searchingTeacher, setSearchingTeacher] = useState(false);
   const [teacherError, setTeacherError] = useState("");
+
+  function openEditBadge(badge: Badge) {
+    setEditingBadge(badge);
+    setEditName(badge.name);
+    setEditImageUrl(badge.imageUrl);
+    setEditImagePreview(badge.imageUrl);
+    const parsed = parseMissions(badge.missions);
+    setEditMissions(parsed.length > 0 ? parsed : [""]);
+    setEditError("");
+  }
+
+  function closeEditBadge() {
+    setEditingBadge(null);
+  }
+
+  async function handleEditImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const { url } = await res.json();
+      setEditImageUrl(url);
+      setEditImagePreview(url);
+    } else {
+      setEditError("Image upload failed");
+    }
+    setEditUploading(false);
+  }
+
+  async function saveEditBadge() {
+    if (!editingBadge || !editName.trim()) return;
+    setEditSaving(true);
+    setEditError("");
+    const res = await fetch(`/api/badges/${editingBadge.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editName,
+        imageUrl: editImageUrl,
+        missions: editMissions.filter((m) => m.trim()),
+      }),
+    });
+    if (res.ok) {
+      setLocalBadges((prev) =>
+        prev.map((b) =>
+          b.id === editingBadge.id
+            ? { ...b, name: editName, imageUrl: editImageUrl, missions: JSON.stringify(editMissions.filter((m) => m.trim())) }
+            : b
+        )
+      );
+      closeEditBadge();
+    } else {
+      const data = await res.json();
+      setEditError(data.error ?? "Failed to save badge");
+    }
+    setEditSaving(false);
+  }
+
+  async function deleteBadge(id: string) {
+    if (!confirm("Delete this badge? This will also remove all awards for it.")) return;
+    const res = await fetch(`/api/badges/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setLocalBadges((prev) => prev.filter((b) => b.id !== id));
+      setLocalStudents((prev) =>
+        prev.map((s) => ({ ...s, earnedBadgeIds: s.earnedBadgeIds.filter((bid) => bid !== id) }))
+      );
+    }
+  }
 
   async function searchStudents() {
     setSearching(true);
@@ -79,7 +161,7 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
     if (res.ok) {
       const newStudent = searchResults.find((s) => s.id === studentId);
       if (newStudent) {
-        setLocalStudents((prev) => [...prev, { ...newStudent, earnedBadgeIds: [] }]);
+        setLocalStudents((prev) => [...prev, { ...newStudent, image: null, earnedBadgeIds: [] }]);
         setSearchResults((prev) => prev.filter((s) => s.id !== studentId));
       }
     }
@@ -232,12 +314,32 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
                   <p className="font-semibold text-gray-900 truncate">{badge.name}</p>
                   <p className="text-sm text-gray-500">{badge.awardedCount} awarded</p>
                 </div>
-                <button
-                  onClick={() => setSelectedBadge(badge)}
-                  className="text-xs text-primary font-semibold hover:underline"
-                >
-                  View
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedBadge(badge)}
+                    className="text-xs text-primary font-semibold hover:underline"
+                  >
+                    View
+                  </button>
+                  {isOwner && (
+                    <>
+                      <button
+                        onClick={() => openEditBadge(badge)}
+                        className="text-gray-400 hover:text-primary transition-colors"
+                        title="Edit badge"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => deleteBadge(badge.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete badge"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -470,12 +572,110 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
         </div>
       )}
 
+      {/* Badge view modal */}
       {selectedBadge && (
         <BadgeModal
           badge={selectedBadge}
           earned={false}
           onClose={() => setSelectedBadge(null)}
         />
+      )}
+
+      {/* Edit badge modal */}
+      {editingBadge && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Edit Badge</h2>
+              <button onClick={closeEditBadge} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Image */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Badge Image</label>
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shrink-0">
+                  <Image src={editImagePreview} alt="Badge" fill className="object-contain p-1" sizes="80px" />
+                </div>
+                <label className="cursor-pointer bg-primary/10 text-primary font-semibold text-sm px-4 py-2 rounded-xl hover:bg-primary/20 transition-colors">
+                  {editUploading ? "Uploading..." : <span className="flex items-center gap-1"><Upload size={14} /> Change Image</span>}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleEditImageUpload}
+                    disabled={editUploading}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Badge Name *</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            {/* Missions */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Missions</label>
+              <div className="space-y-2">
+                {editMissions.map((mission, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={mission}
+                      onChange={(e) => setEditMissions((prev) => prev.map((m, idx) => idx === i ? e.target.value : m))}
+                      placeholder={`Mission ${i + 1}...`}
+                      className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    {editMissions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setEditMissions((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-400 hover:text-red-600 px-2"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditMissions((prev) => [...prev, ""])}
+                className="mt-2 flex items-center gap-1 text-sm text-primary font-semibold hover:underline"
+              >
+                <Plus size={14} /> Add mission
+              </button>
+            </div>
+
+            {editError && <p className="text-red-500 text-sm mb-4">{editError}</p>}
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeEditBadge}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditBadge}
+                disabled={editSaving || editUploading || !editName.trim()}
+                className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
