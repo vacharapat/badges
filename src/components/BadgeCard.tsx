@@ -14,7 +14,7 @@ export function BadgeCard({ name, imageUrl, earned, onClick }: BadgeCardProps) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition-colors w-full"
+      className="flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition-colors w-full cursor-pointer touch-manipulation"
     >
       <div className={cn("relative w-20 h-20", !earned && "opacity-30 grayscale")}>
         <Image
