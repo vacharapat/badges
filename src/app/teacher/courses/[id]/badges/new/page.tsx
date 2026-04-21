@@ -13,10 +13,13 @@ export default async function NewBadgePage({ params }: { params: Promise<{ id: s
   if (!session) redirect("/");
   if (session.user.role === "STUDENT") redirect("/courses");
 
-  const course = await prisma.course.findUnique({ where: { id } });
+  const course = await prisma.course.findUnique({
+    where: { id },
+    include: { teachers: { select: { id: true } } },
+  });
   if (!course) notFound();
 
-  const isOwner = course.teacherId === session.user.id || session.user.role === "ADMIN";
+  const isOwner = course.teachers.some((t) => t.id === session.user.id) || session.user.role === "ADMIN";
   if (!isOwner) redirect("/teacher/courses");
 
   return (
