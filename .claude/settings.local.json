@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest *)",
+      "PowerShell(npm *)",
+      "Bash(npm --version)",
+      "Bash(npm run *)",
+      "Bash(npm install *)"
+    ]
+  }
+}
