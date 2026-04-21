@@ -64,7 +64,7 @@ export function Navbar() {
         })}
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex flex-col items-center gap-0.5 px-4 py-2 text-xs text-gray-500 cursor-pointer touch-manipulation"
+          className="flex flex-col items-center gap-0.5 px-4 py-2 text-xs text-gray-500"
         >
           <LogOut size={22} />
           <span>Sign Out</span>

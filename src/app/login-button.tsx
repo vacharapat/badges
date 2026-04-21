@@ -1,7 +1,11 @@
+"use client";
+
+import { signIn } from "next-auth/react";
+
 export function LoginButton() {
   return (
-    <a
-      href="/api/auth/signin/google?callbackUrl=%2Fcourses"
+    <button
+      onClick={() => signIn("google", { callbackUrl: "/courses" })}
       className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
     >
       <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -23,6 +27,6 @@ export function LoginButton() {
         />
       </svg>
       Sign in with Google
-    </a>
+    </button>
   );
 }

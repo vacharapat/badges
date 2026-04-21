@@ -14,7 +14,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen min-h-[100dvh] bg-primary flex flex-col items-center justify-center p-8">
+    <main className="min-h-screen bg-primary flex flex-col items-center justify-center p-8">
       <div className="flex flex-col items-center text-white mb-12">
         <div className="bg-white/20 rounded-full p-6 mb-6">
           <Award size={64} className="text-gold" />
