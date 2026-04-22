@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft } from "lucide-react";
 import { BadgeModal } from "@/components/BadgeModal";
 import { cn } from "@/lib/utils";
 import { parseMissions } from "@/lib/utils";
@@ -31,19 +33,32 @@ interface Teacher {
 
 interface Props {
   courseId: string;
+  courseName: string;
+  courseDescription: string;
   badges: Badge[];
   students: Student[];
   teachers: Teacher[];
   isOwner: boolean;
 }
 
-export function TeacherCourseClient({ courseId, badges, students, teachers, isOwner }: Props) {
+export function TeacherCourseClient({ courseId, courseName, courseDescription, badges, students, teachers, isOwner }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<"badges" | "students" | "teachers">("badges");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [localStudents, setLocalStudents] = useState(students);
   const [localBadges, setLocalBadges] = useState(badges);
   const [localTeachers, setLocalTeachers] = useState(teachers);
+
+  // Edit course modal state
+  const [showEditCourse, setShowEditCourse] = useState(false);
+  const [localCourseName, setLocalCourseName] = useState(courseName);
+  const [localCourseDescription, setLocalCourseDescription] = useState(courseDescription);
+  const [editCourseName, setEditCourseName] = useState("");
+  const [editCourseDescription, setEditCourseDescription] = useState("");
+  const [savingCourse, setSavingCourse] = useState(false);
+  const [deletingCourse, setDeletingCourse] = useState(false);
+  const [courseError, setCourseError] = useState("");
 
   // Edit badge modal state
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
@@ -67,6 +82,46 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
   const [teacherResults, setTeacherResults] = useState<Teacher[]>([]);
   const [searchingTeacher, setSearchingTeacher] = useState(false);
   const [teacherError, setTeacherError] = useState("");
+
+  function openEditCourse() {
+    setEditCourseName(localCourseName);
+    setEditCourseDescription(localCourseDescription);
+    setCourseError("");
+    setShowEditCourse(true);
+  }
+
+  async function saveEditCourse() {
+    if (!editCourseName.trim()) return;
+    setSavingCourse(true);
+    setCourseError("");
+    const res = await fetch(`/api/courses/${courseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editCourseName, description: editCourseDescription }),
+    });
+    if (res.ok) {
+      setLocalCourseName(editCourseName.trim());
+      setLocalCourseDescription(editCourseDescription.trim());
+      setShowEditCourse(false);
+    } else {
+      const data = await res.json();
+      setCourseError(data.error ?? "Failed to save course");
+    }
+    setSavingCourse(false);
+  }
+
+  async function deleteCourse() {
+    if (!confirm(`Delete "${localCourseName}"? This will permanently remove all badges and student progress for this course.`)) return;
+    setDeletingCourse(true);
+    const res = await fetch(`/api/courses/${courseId}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/teacher/courses");
+    } else {
+      const data = await res.json();
+      setCourseError(data.error ?? "Failed to delete course");
+      setDeletingCourse(false);
+    }
+  }
 
   function openEditBadge(badge: Badge) {
     setEditingBadge(badge);
@@ -249,6 +304,40 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
   }
 
   return (
+    <div>
+      {/* Header */}
+      <header className="bg-primary text-white px-4 py-5">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          <Link href="/teacher/courses" className="text-blue-200 hover:text-white">
+            <ChevronLeft size={24} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate">{localCourseName}</h1>
+            {localCourseDescription && (
+              <p className="text-blue-200 text-sm truncate">{localCourseDescription}</p>
+            )}
+          </div>
+          {isOwner && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={openEditCourse}
+                className="text-blue-200 hover:text-white transition-colors"
+                title="Edit course"
+              >
+                <Pencil size={18} />
+              </button>
+              <Link
+                href={`/teacher/courses/${courseId}/badges/new`}
+                className="flex items-center gap-1.5 bg-white text-primary font-semibold text-sm px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors"
+              >
+                <Plus size={16} />
+                Badge
+              </Link>
+            </div>
+          )}
+        </div>
+      </header>
+
     <div className="max-w-lg mx-auto">
       {/* Tabs */}
       <div className="flex border-b border-gray-200 bg-white px-4">
@@ -672,6 +761,70 @@ export function TeacherCourseClient({ courseId, badges, students, teachers, isOw
                 className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
                 {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+      {/* Edit course modal */}
+      {showEditCourse && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Edit Course</h2>
+              <button onClick={() => setShowEditCourse(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Course Name *</label>
+              <input
+                type="text"
+                value={editCourseName}
+                onChange={(e) => setEditCourseName(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+              <textarea
+                value={editCourseDescription}
+                onChange={(e) => setEditCourseDescription(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              />
+            </div>
+
+            {courseError && <p className="text-red-500 text-sm mb-4">{courseError}</p>}
+
+            <div className="flex gap-3 mb-4">
+              <button
+                onClick={() => setShowEditCourse(false)}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditCourse}
+                disabled={savingCourse || !editCourseName.trim()}
+                className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
+                {savingCourse ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <button
+                onClick={deleteCourse}
+                disabled={deletingCourse}
+                className="flex items-center gap-2 text-red-500 hover:text-red-700 text-sm font-semibold disabled:opacity-50"
+              >
+                <Trash2 size={15} />
+                {deletingCourse ? "Deleting..." : "Delete this course"}
               </button>
             </div>
           </div>

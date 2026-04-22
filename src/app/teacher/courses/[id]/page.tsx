@@ -2,9 +2,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
-import { Plus, ChevronLeft } from "lucide-react";
 import { TeacherCourseClient } from "./teacher-course-client";
 
 export default async function TeacherCoursePage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,31 +64,10 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-primary text-white px-4 py-5">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/teacher/courses" className="text-blue-200 hover:text-white">
-            <ChevronLeft size={24} />
-          </Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{course.name}</h1>
-            {course.description && (
-              <p className="text-blue-200 text-sm truncate">{course.description}</p>
-            )}
-          </div>
-          {isOwner && (
-            <Link
-              href={`/teacher/courses/${id}/badges/new`}
-              className="flex items-center gap-1.5 bg-white text-primary font-semibold text-sm px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors shrink-0"
-            >
-              <Plus size={16} />
-              Badge
-            </Link>
-          )}
-        </div>
-      </header>
-
       <TeacherCourseClient
         courseId={id}
+        courseName={course.name}
+        courseDescription={course.description ?? ""}
         badges={badges}
         students={students}
         teachers={course.teachers}
