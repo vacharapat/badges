@@ -31,6 +31,9 @@ Sign in with your `@ku.th` Google account. Local dev shares the Railway PostgreS
 | `NEXTAUTH_URL` | `http://localhost:3000` for local dev |
 | `ADMIN_EMAIL` | `vacharapat.m@ku.th` |
 | `DATABASE_URL` | Railway PostgreSQL public URL (TCP proxy URL from Railway → PostgreSQL service → Settings → Networking) |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary dashboard → Settings → Account |
+| `CLOUDINARY_API_KEY` | Cloudinary dashboard → Settings → Access Keys |
+| `CLOUDINARY_API_SECRET` | Same as above |
 
 Google OAuth redirect URIs to add:
 - `http://localhost:3000/api/auth/callback/google` (local)
@@ -50,6 +53,7 @@ Railway environment variables needed:
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `ADMIN_EMAIL`
 - `NEXTAUTH_URL` = your Railway public URL
 - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Railway internal reference)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 
 ## Promoting a user to admin
 
@@ -116,7 +120,7 @@ badge_app/
 │       ├── admin/users/admin-users-client.tsx # Client: role switcher
 │       └── api/
 │           ├── auth/[...nextauth]/route.ts   # NextAuth handler
-│           ├── upload/route.ts               # Image upload → /public/uploads/
+│           ├── upload/route.ts               # Image upload → Cloudinary
 │           ├── courses/route.ts              # GET (list), POST (create)
 │           ├── courses/[id]/route.ts         # GET, PATCH, DELETE
 │           ├── courses/[id]/badges/route.ts  # POST (add badge to course)
@@ -124,7 +128,7 @@ badge_app/
 │           ├── badges/[id]/route.ts          # PATCH, DELETE
 │           ├── badges/[id]/award/route.ts    # POST (award), DELETE (revoke)
 │           └── admin/users/route.ts          # GET (all users), PATCH (change role)
-├── public/uploads/         # Badge images stored here (ephemeral on Railway)
+├── public/uploads/         # (legacy) local uploads — no longer used; images go to Cloudinary
 ├── railway.toml            # Railway deploy config: db push + seed + start
 ├── .npmrc                  # legacy-peer-deps=true (eslint peer dep workaround)
 ├── .env.local              # Secrets — never commit this
@@ -148,11 +152,10 @@ badge_app/
 - Color palette: primary blue `#1B4F8A`, gold `#F5A623` for progress bar
 - Earned badges: full color. Unearned: `grayscale opacity-30`
 - Mobile-first layout with max-w-lg container, fixed bottom nav
-- Badge images uploaded to `/public/uploads/` and served statically
+- Badge images uploaded to Cloudinary (`badge-app/` folder) and served via Cloudinary CDN URLs
 
 ## Known limitations / future work
 
-- Badge images are stored on the local filesystem (`/public/uploads/`). On Railway these are lost on redeploy — replace with Cloudinary or S3 for production.
 - No email notifications when a badge is awarded.
 - Teachers can only see their own courses (admins see all).
 - Students cannot self-enroll; teachers must add them manually.

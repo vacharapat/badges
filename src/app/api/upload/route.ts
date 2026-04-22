@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
         else resolve(result);
       }
     ).end(buffer);
+  }).catch((err) => {
+    console.error("Cloudinary upload error:", err);
+    throw err;
   });
 
   return NextResponse.json({ url: result.secure_url });
