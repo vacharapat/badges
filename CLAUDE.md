@@ -162,6 +162,16 @@ badge_app/
 - Mobile-first layout with max-w-lg container, fixed bottom nav
 - Badge images uploaded to Cloudinary (`badge-app/` folder) and served via Cloudinary CDN URLs
 
+## Navigation
+
+Bottom nav items per role:
+
+| Role | Tabs |
+|---|---|
+| STUDENT | Courses, Profile, Sign Out |
+| TEACHER | Courses, Profile, Sign Out |
+| ADMIN | Users, Courses, Profile, Sign Out |
+
 ## Known limitations / future work
 
 - No email notifications when a badge is awarded.

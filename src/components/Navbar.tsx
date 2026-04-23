@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
-import { Home, BookOpen, Award, User, LogOut, ShieldCheck } from "lucide-react";
+import { BookOpen, User, LogOut, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -25,13 +25,11 @@ export function Navbar() {
 
   if (role === "STUDENT") {
     navItems = [
-      { href: "/courses", label: "Home", icon: <Home size={22} /> },
       { href: "/courses", label: "Courses", icon: <BookOpen size={22} /> },
       { href: "/profile", label: "Profile", icon: <User size={22} /> },
     ];
   } else if (role === "TEACHER") {
     navItems = [
-      { href: "/teacher/courses", label: "Home", icon: <Home size={22} /> },
       { href: "/teacher/courses", label: "Courses", icon: <BookOpen size={22} /> },
       { href: "/profile", label: "Profile", icon: <User size={22} /> },
     ];
