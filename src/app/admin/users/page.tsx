@@ -9,10 +9,17 @@ export default async function AdminUsersPage() {
   if (!session) redirect("/");
   if (session.user.role !== "ADMIN") redirect("/courses");
 
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, email: true, image: true, role: true },
-  });
+  const [users, pendingTeachers] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      select: { id: true, name: true, email: true, image: true, role: true },
+    }),
+    prisma.pendingRole.findMany({
+      where: { role: "TEACHER" },
+      orderBy: { createdAt: "asc" },
+      select: { email: true },
+    }),
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -24,7 +31,11 @@ export default async function AdminUsersPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        <AdminUsersClient users={users} currentUserId={session.user.id} />
+        <AdminUsersClient
+          users={users}
+          currentUserId={session.user.id}
+          pendingTeacherEmails={pendingTeachers.map((p) => p.email)}
+        />
       </main>
 
       <Navbar />

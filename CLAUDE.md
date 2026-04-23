@@ -67,11 +67,18 @@ dotenv -e .env.local -- node -e "const {PrismaClient}=require('@prisma/client');
 
 | Role | How assigned | What they can do |
 |---|---|---|
-| ADMIN | Seeded via `ADMIN_EMAIL` env var | Manage user roles at `/admin/users` |
-| TEACHER | Admin promotes a user | Create courses, add badges, enroll students, award badges |
+| ADMIN | Seeded via `ADMIN_EMAIL` env var | Manage user roles at `/admin/users`, pre-register teachers by email |
+| TEACHER | Admin promotes a user **or** admin pre-registers email before first login | Create courses, add badges, enroll students by email, award badges |
 | STUDENT | Default for all @ku.th logins | View enrolled courses, track badge progress |
 
 Only `@ku.th` and `*.ku.th` Google accounts can log in (enforced in `src/lib/auth.ts`).
+
+### Pre-registration (before first login)
+
+- **Admin pre-registers a teacher** at `/admin/users` → "Pre-register Teacher" section → enter email. If the user already exists their role is upgraded immediately; if not, a `PendingRole` row is created and the role is applied the moment they first sign in.
+- **Teacher pre-enrolls a student** on the course Students tab → "Add Student" → enter any `@ku.th` email. If the user exists they are enrolled immediately; if not, a `PendingEnrollment` row is created. Pending students appear in the list with a "Pending" badge. On first sign-in the enrollment is automatically activated.
+
+Both pending records live in `PendingRole` and `PendingEnrollment` tables and are processed (then deleted) inside the `events.createUser` NextAuth hook in `src/lib/auth.ts`.
 
 ## Key flows
 
@@ -79,7 +86,7 @@ Only `@ku.th` and `*.ku.th` Google accounts can log in (enforced in `src/lib/aut
 1. `/teacher/courses` → New → fill name/description
 2. Course page → add Badge (upload image, name, missions list)
 3. Course page → Badges tab → pencil icon to edit, trash icon to delete a badge
-4. Course page → Students tab → Add Student → search by email → Enroll
+4. Course page → Students tab → Add Student → type any `@ku.th` email → Enroll (works even if student hasn't logged in yet)
 5. Students tab → expand a student → Award/revoke individual badges
 
 **Student tracks progress:**
@@ -92,7 +99,7 @@ Only `@ku.th` and `*.ku.th` Google accounts can log in (enforced in `src/lib/aut
 ```
 badge_app/
 ├── prisma/
-│   ├── schema.prisma       # DB models: User, Course, Badge, Enrollment, StudentBadge
+│   ├── schema.prisma       # DB models: User, Course, Badge, Enrollment, StudentBadge, PendingEnrollment, PendingRole
 │   └── seed.ts             # Seeds the ADMIN_EMAIL user as ADMIN role
 ├── src/
 │   ├── lib/
@@ -124,10 +131,11 @@ badge_app/
 │           ├── courses/route.ts              # GET (list), POST (create)
 │           ├── courses/[id]/route.ts         # GET, PATCH, DELETE
 │           ├── courses/[id]/badges/route.ts  # POST (add badge to course)
-│           ├── courses/[id]/enrollments/route.ts # GET (unenrolled students), POST, DELETE
+│           ├── courses/[id]/enrollments/route.ts # GET (pending emails), POST (enroll by email), DELETE
 │           ├── badges/[id]/route.ts          # PATCH, DELETE
 │           ├── badges/[id]/award/route.ts    # POST (award), DELETE (revoke)
-│           └── admin/users/route.ts          # GET (all users), PATCH (change role)
+│           ├── admin/users/route.ts          # GET (all users), PATCH (change role)
+│           └── admin/pending-teachers/route.ts # GET, POST (pre-register), DELETE
 ├── public/uploads/         # (legacy) local uploads — no longer used; images go to Cloudinary
 ├── railway.toml            # Railway deploy config: db push + seed + start
 ├── .npmrc                  # legacy-peer-deps=true (eslint peer dep workaround)

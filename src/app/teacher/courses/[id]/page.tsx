@@ -27,6 +27,10 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
         },
         orderBy: { createdAt: "asc" },
       },
+      pendingEnrollments: {
+        select: { email: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -62,6 +66,8 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
     awardedCount: b._count.studentBadges,
   }));
 
+  const pendingEmails = course.pendingEnrollments.map((p) => p.email);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <TeacherCourseClient
@@ -70,6 +76,7 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
         courseDescription={course.description ?? ""}
         badges={badges}
         students={students}
+        pendingEmails={pendingEmails}
         teachers={course.teachers}
         isOwner={isOwner}
       />

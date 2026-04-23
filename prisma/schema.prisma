@@ -67,9 +67,10 @@ model Course {
   description String?
   createdAt   DateTime @default(now())
 
-  teachers    User[]   @relation("CourseTeachers")
-  badges      Badge[]
-  enrollments Enrollment[]
+  teachers           User[]              @relation("CourseTeachers")
+  badges             Badge[]
+  enrollments        Enrollment[]
+  pendingEnrollments PendingEnrollment[]
 }
 
 model Enrollment {
@@ -95,6 +96,24 @@ model Badge {
   courseId String
 
   studentBadges StudentBadge[]
+}
+
+model PendingEnrollment {
+  id        String   @id @default(cuid())
+  email     String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([email, courseId])
+}
+
+model PendingRole {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("TEACHER")
+  createdAt DateTime @default(now())
 }
 
 model StudentBadge {

@@ -25,6 +25,26 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  events: {
+    async createUser({ user }) {
+      if (!user.email || !user.id) return;
+
+      const pendingRole = await prisma.pendingRole.findUnique({ where: { email: user.email } });
+      if (pendingRole) {
+        await prisma.user.update({ where: { id: user.id }, data: { role: pendingRole.role } });
+        await prisma.pendingRole.delete({ where: { email: user.email } });
+      }
+
+      const pending = await prisma.pendingEnrollment.findMany({ where: { email: user.email } });
+      if (pending.length > 0) {
+        await prisma.enrollment.createMany({
+          data: pending.map((pe) => ({ studentId: user.id, courseId: pe.courseId })),
+          skipDuplicates: true,
+        });
+        await prisma.pendingEnrollment.deleteMany({ where: { email: user.email } });
+      }
+    },
+  },
   pages: {
     signIn: "/",
     error: "/",

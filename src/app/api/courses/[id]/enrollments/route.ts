@@ -9,23 +9,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const enrolled = await prisma.enrollment.findMany({
+  const pending = await prisma.pendingEnrollment.findMany({
     where: { courseId: id },
-    select: { studentId: true },
-  });
-  const enrolledIds = enrolled.map((e) => e.studentId);
-
-  const students = await prisma.user.findMany({
-    where: {
-      role: "STUDENT",
-      id: { notIn: enrolledIds },
-      OR: [{ email: { endsWith: "@ku.th" } }, { email: { endsWith: ".ku.th" } }],
-    },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
+    select: { email: true },
+    orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json(students);
+  return NextResponse.json({ pendingEmails: pending.map((p) => p.email) });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,14 +25,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { studentId } = await req.json();
-  if (!studentId) return NextResponse.json({ error: "studentId required" }, { status: 400 });
+  const { email } = await req.json();
+  if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
 
-  const enrollment = await prisma.enrollment.create({
-    data: { studentId, courseId: id },
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.endsWith("@ku.th") && !normalizedEmail.endsWith(".ku.th")) {
+    return NextResponse.json({ error: "Only @ku.th emails can be enrolled" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (user) {
+    try {
+      await prisma.enrollment.create({ data: { studentId: user.id, courseId: id } });
+      return NextResponse.json({
+        type: "enrolled",
+        student: { id: user.id, name: user.name, email: user.email, image: user.image },
+      }, { status: 201 });
+    } catch {
+      return NextResponse.json({ error: "Already enrolled" }, { status: 409 });
+    }
+  }
+
+  await prisma.pendingEnrollment.upsert({
+    where: { email_courseId: { email: normalizedEmail, courseId: id } },
+    create: { email: normalizedEmail, courseId: id },
+    update: {},
   });
-
-  return NextResponse.json(enrollment, { status: 201 });
+  return NextResponse.json({ type: "pending", email: normalizedEmail }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,11 +61,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { studentId } = await req.json();
+  const { studentId, email } = await req.json();
 
-  await prisma.enrollment.deleteMany({
-    where: { courseId: id, studentId },
-  });
+  if (studentId) {
+    await prisma.enrollment.deleteMany({ where: { courseId: id, studentId } });
+  } else if (email) {
+    await prisma.pendingEnrollment.deleteMany({ where: { courseId: id, email } });
+  }
 
   return NextResponse.json({ ok: true });
 }

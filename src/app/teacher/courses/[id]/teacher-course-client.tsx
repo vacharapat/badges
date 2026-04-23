@@ -37,16 +37,18 @@ interface Props {
   courseDescription: string;
   badges: Badge[];
   students: Student[];
+  pendingEmails: string[];
   teachers: Teacher[];
   isOwner: boolean;
 }
 
-export function TeacherCourseClient({ courseId, courseName, courseDescription, badges, students, teachers, isOwner }: Props) {
+export function TeacherCourseClient({ courseId, courseName, courseDescription, badges, students, pendingEmails, teachers, isOwner }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<"badges" | "students" | "teachers">("badges");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [localStudents, setLocalStudents] = useState(students);
+  const [localPendingEmails, setLocalPendingEmails] = useState(pendingEmails);
   const [localBadges, setLocalBadges] = useState(badges);
   const [localTeachers, setLocalTeachers] = useState(teachers);
 
@@ -72,9 +74,9 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
 
   // For adding students
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [searchEmail, setSearchEmail] = useState("");
-  const [searchResults, setSearchResults] = useState<{ id: string; name: string | null; email: string | null }[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [enrollEmail, setEnrollEmail] = useState("");
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState("");
 
   // For adding teachers
   const [showAddTeacher, setShowAddTeacher] = useState(false);
@@ -194,32 +196,28 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     }
   }
 
-  async function searchStudents() {
-    setSearching(true);
-    const res = await fetch(`/api/courses/${courseId}/enrollments`);
-    if (res.ok) {
-      const all = await res.json();
-      const q = searchEmail.toLowerCase();
-      setSearchResults(
-        q ? all.filter((u: { email: string | null }) => u.email?.toLowerCase().includes(q)) : all
-      );
-    }
-    setSearching(false);
-  }
-
-  async function enrollStudent(studentId: string) {
+  async function enrollByEmail() {
+    const email = enrollEmail.trim().toLowerCase();
+    if (!email) return;
+    setEnrolling(true);
+    setEnrollError("");
     const res = await fetch(`/api/courses/${courseId}/enrollments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ email }),
     });
+    const data = await res.json();
     if (res.ok) {
-      const newStudent = searchResults.find((s) => s.id === studentId);
-      if (newStudent) {
-        setLocalStudents((prev) => [...prev, { ...newStudent, image: null, earnedBadgeIds: [] }]);
-        setSearchResults((prev) => prev.filter((s) => s.id !== studentId));
+      if (data.type === "enrolled") {
+        setLocalStudents((prev) => [...prev, { ...data.student, earnedBadgeIds: [] }]);
+      } else {
+        setLocalPendingEmails((prev) => [...prev, data.email]);
       }
+      setEnrollEmail("");
+    } else {
+      setEnrollError(data.error ?? "Failed to enroll");
     }
+    setEnrolling(false);
   }
 
   async function removeStudent(studentId: string) {
@@ -231,6 +229,18 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     });
     if (res.ok) {
       setLocalStudents((prev) => prev.filter((s) => s.id !== studentId));
+    }
+  }
+
+  async function removePendingEmail(email: string) {
+    if (!confirm(`Remove pending enrollment for ${email}?`)) return;
+    const res = await fetch(`/api/courses/${courseId}/enrollments`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok) {
+      setLocalPendingEmails((prev) => prev.filter((e) => e !== email));
     }
   }
 
@@ -363,7 +373,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
           )}
         >
           <Users size={16} />
-          Students ({localStudents.length})
+          Students ({localStudents.length + localPendingEmails.length})
         </button>
         <button
           onClick={() => setTab("teachers")}
@@ -441,7 +451,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
           {isOwner && (
             <div className="mb-4">
               <button
-                onClick={() => setShowAddStudent(!showAddStudent)}
+                onClick={() => { setShowAddStudent(!showAddStudent); setEnrollError(""); }}
                 className="flex items-center gap-2 text-primary font-semibold text-sm"
               >
                 <UserPlus size={16} />
@@ -452,47 +462,31 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
                 <div className="mt-3 bg-white rounded-2xl border border-gray-200 p-4">
                   <div className="flex gap-2">
                     <input
-                      type="text"
-                      value={searchEmail}
-                      onChange={(e) => setSearchEmail(e.target.value)}
-                      placeholder="Search by email..."
+                      type="email"
+                      value={enrollEmail}
+                      onChange={(e) => { setEnrollEmail(e.target.value); setEnrollError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && enrollByEmail()}
+                      placeholder="student@ku.th"
                       className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <button
-                      onClick={searchStudents}
-                      disabled={searching}
+                      onClick={enrollByEmail}
+                      disabled={enrolling || !enrollEmail.trim()}
                       className="bg-primary text-white px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
                     >
-                      {searching ? "..." : "Search"}
+                      {enrolling ? "..." : "Enroll"}
                     </button>
                   </div>
-                  {searchResults.length > 0 && (
-                    <ul className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-                      {searchResults.map((s) => (
-                        <li
-                          key={s.id}
-                          className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-gray-50"
-                        >
-                          <span className="text-gray-700">{s.name ?? s.email}</span>
-                          <button
-                            onClick={() => enrollStudent(s.id)}
-                            className="text-primary font-semibold hover:underline"
-                          >
-                            Enroll
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {searchResults.length === 0 && searchEmail && !searching && (
-                    <p className="mt-2 text-sm text-gray-400">No students found.</p>
-                  )}
+                  {enrollError && <p className="mt-2 text-sm text-red-500">{enrollError}</p>}
+                  <p className="mt-2 text-xs text-gray-400">
+                    If the student hasn&apos;t signed in yet, they&apos;ll be enrolled automatically on first login.
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {localStudents.length === 0 ? (
+          {localStudents.length === 0 && localPendingEmails.length === 0 ? (
             <p className="text-center text-gray-400 py-8">No students enrolled yet.</p>
           ) : (
             localStudents.map((student) => {
@@ -570,6 +564,36 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
                 </div>
               );
             })
+          )}
+
+          {localPendingEmails.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
+                Pending — will enroll on first sign-in
+              </p>
+              {localPendingEmails.map((email) => (
+                <div
+                  key={email}
+                  className="bg-white rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 shrink-0">
+                    <GraduationCap size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-500 truncate">{email}</p>
+                    <p className="text-xs text-amber-500 font-medium">Pending</p>
+                  </div>
+                  {isOwner && (
+                    <button
+                      onClick={() => removePendingEmail(email)}
+                      className="text-gray-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
