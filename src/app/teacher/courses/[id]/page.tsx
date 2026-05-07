@@ -47,15 +47,31 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
     select: { studentId: true, badgeId: true },
   });
 
+  const studentMissions = await prisma.studentMission.findMany({
+    where: {
+      studentId: { in: studentIds },
+      badge: { courseId: id },
+    },
+    select: { studentId: true, badgeId: true, missionIndex: true },
+  });
+
   const badgeMap: Record<string, Set<string>> = {};
   for (const sb of studentBadges) {
     if (!badgeMap[sb.studentId]) badgeMap[sb.studentId] = new Set();
     badgeMap[sb.studentId].add(sb.badgeId);
   }
 
+  const missionMap: Record<string, Record<string, number[]>> = {};
+  for (const sm of studentMissions) {
+    if (!missionMap[sm.studentId]) missionMap[sm.studentId] = {};
+    if (!missionMap[sm.studentId][sm.badgeId]) missionMap[sm.studentId][sm.badgeId] = [];
+    missionMap[sm.studentId][sm.badgeId].push(sm.missionIndex);
+  }
+
   const students = course.enrollments.map((e) => ({
     ...e.student,
     earnedBadgeIds: Array.from(badgeMap[e.student.id] ?? []),
+    completedMissions: missionMap[e.student.id] ?? {},
   }));
 
   const badges = course.badges.map((b) => ({

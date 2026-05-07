@@ -37,11 +37,11 @@ Sign in with your `@ku.th` Google account. Local dev shares the Railway PostgreS
 
 Google OAuth redirect URIs to add:
 - `http://localhost:3000/api/auth/callback/google` (local)
-- `https://your-railway-url.up.railway.app/api/auth/callback/google` (production)
+- `https://badge-tracker.up.railway.app/api/auth/callback/google` (production)
 
 ## Railway deployment
 
-Deployed at: configure via Railway dashboard (Settings → Networking → Generate Domain)
+Deployed at: https://badge-tracker.up.railway.app
 
 On every deploy, Railway automatically runs:
 ```
@@ -84,10 +84,10 @@ Both pending records live in `PendingRole` and `PendingEnrollment` tables and ar
 
 **Teacher creates a course:**
 1. `/teacher/courses` → New → fill name/description
-2. Course page → add Badge (upload image, name, missions list)
+2. Course page → add Badge (upload image, name, **at least one mission** — required)
 3. Course page → Badges tab → pencil icon to edit, trash icon to delete a badge
 4. Course page → Students tab → Add Student → type any `@ku.th` email → Enroll (works even if student hasn't logged in yet)
-5. Students tab → expand a student → Award/revoke individual badges
+5. Students tab → expand a student → expand a badge → tick each mission as the student completes it. The badge is **automatically awarded** when every mission is checked, and revoked if a mission is later unchecked.
 
 **Student tracks progress:**
 1. `/courses` → see all enrolled courses with progress bars
@@ -99,7 +99,7 @@ Both pending records live in `PendingRole` and `PendingEnrollment` tables and ar
 ```
 badge_app/
 ├── prisma/
-│   ├── schema.prisma       # DB models: User, Course, Badge, Enrollment, StudentBadge, PendingEnrollment, PendingRole
+│   ├── schema.prisma       # DB models: User, Course, Badge, Enrollment, StudentBadge, StudentMission, PendingEnrollment, PendingRole
 │   └── seed.ts             # Seeds the ADMIN_EMAIL user as ADMIN role
 ├── src/
 │   ├── lib/
@@ -133,7 +133,7 @@ badge_app/
 │           ├── courses/[id]/badges/route.ts  # POST (add badge to course)
 │           ├── courses/[id]/enrollments/route.ts # GET (pending emails), POST (enroll by email), DELETE
 │           ├── badges/[id]/route.ts          # PATCH, DELETE
-│           ├── badges/[id]/award/route.ts    # POST (award), DELETE (revoke)
+│           ├── badges/[id]/missions/route.ts # POST/DELETE — toggle a mission for a student; auto-awards badge when all missions complete
 │           ├── admin/users/route.ts          # GET (all users), PATCH (change role)
 │           └── admin/pending-teachers/route.ts # GET, POST (pre-register), DELETE
 ├── public/uploads/         # (legacy) local uploads — no longer used; images go to Cloudinary

@@ -55,10 +55,12 @@ model User {
   accounts Account[]
   sessions Session[]
 
-  coursesTaught  Course[]       @relation("CourseTeachers")
-  enrollments    Enrollment[]
-  badgesEarned   StudentBadge[] @relation("StudentBadges")
-  badgesAwarded  StudentBadge[] @relation("TeacherAwarded")
+  coursesTaught     Course[]         @relation("CourseTeachers")
+  enrollments       Enrollment[]
+  badgesEarned      StudentBadge[]   @relation("StudentBadges")
+  badgesAwarded     StudentBadge[]   @relation("TeacherAwarded")
+  missionsCompleted StudentMission[] @relation("StudentMissions")
+  missionsChecked   StudentMission[] @relation("TeacherCheckedMission")
 }
 
 model Course {
@@ -95,7 +97,8 @@ model Badge {
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId String
 
-  studentBadges StudentBadge[]
+  studentBadges   StudentBadge[]
+  studentMissions StudentMission[]
 }
 
 model PendingEnrollment {
@@ -114,6 +117,21 @@ model PendingRole {
   email     String   @unique
   role      String   @default("TEACHER")
   createdAt DateTime @default(now())
+}
+
+model StudentMission {
+  id           String   @id @default(cuid())
+  missionIndex Int
+  completedAt  DateTime @default(now())
+
+  student     User   @relation("StudentMissions", fields: [studentId], references: [id])
+  studentId   String
+  badge       Badge  @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId     String
+  checkedBy   User   @relation("TeacherCheckedMission", fields: [checkedById], references: [id])
+  checkedById String
+
+  @@unique([studentId, badgeId, missionIndex])
 }
 
 model StudentBadge {

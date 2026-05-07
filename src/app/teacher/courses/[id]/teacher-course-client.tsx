@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft } from "lucide-react";
+import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft, Square, CheckSquare } from "lucide-react";
 import { BadgeModal } from "@/components/BadgeModal";
 import { cn } from "@/lib/utils";
 import { parseMissions } from "@/lib/utils";
@@ -23,6 +23,7 @@ interface Student {
   email: string | null;
   image: string | null;
   earnedBadgeIds: string[];
+  completedMissions: Record<string, number[]>;
 }
 
 interface Teacher {
@@ -47,6 +48,8 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
   const [tab, setTab] = useState<"badges" | "students" | "teachers">("badges");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [expandedBadgeKey, setExpandedBadgeKey] = useState<string | null>(null);
+  const [savingMission, setSavingMission] = useState<string | null>(null);
   const [localStudents, setLocalStudents] = useState(students);
   const [localPendingEmails, setLocalPendingEmails] = useState(pendingEmails);
   const [localBadges, setLocalBadges] = useState(badges);
@@ -158,6 +161,11 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
 
   async function saveEditBadge() {
     if (!editingBadge || !editName.trim()) return;
+    const cleanMissions = editMissions.map((m) => m.trim()).filter(Boolean);
+    if (cleanMissions.length === 0) {
+      setEditError("Add at least one mission.");
+      return;
+    }
     setEditSaving(true);
     setEditError("");
     const res = await fetch(`/api/badges/${editingBadge.id}`, {
@@ -166,18 +174,19 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
       body: JSON.stringify({
         name: editName,
         imageUrl: editImageUrl,
-        missions: editMissions.filter((m) => m.trim()),
+        missions: cleanMissions,
       }),
     });
     if (res.ok) {
       setLocalBadges((prev) =>
         prev.map((b) =>
           b.id === editingBadge.id
-            ? { ...b, name: editName, imageUrl: editImageUrl, missions: JSON.stringify(editMissions.filter((m) => m.trim())) }
+            ? { ...b, name: editName, imageUrl: editImageUrl, missions: JSON.stringify(cleanMissions) }
             : b
         )
       );
       closeEditBadge();
+      router.refresh();
     } else {
       const data = await res.json();
       setEditError(data.error ?? "Failed to save badge");
@@ -191,7 +200,14 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     if (res.ok) {
       setLocalBadges((prev) => prev.filter((b) => b.id !== id));
       setLocalStudents((prev) =>
-        prev.map((s) => ({ ...s, earnedBadgeIds: s.earnedBadgeIds.filter((bid) => bid !== id) }))
+        prev.map((s) => {
+          const { [id]: _removed, ...rest } = s.completedMissions;
+          return {
+            ...s,
+            earnedBadgeIds: s.earnedBadgeIds.filter((bid) => bid !== id),
+            completedMissions: rest,
+          };
+        })
       );
     }
   }
@@ -209,7 +225,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     const data = await res.json();
     if (res.ok) {
       if (data.type === "enrolled") {
-        setLocalStudents((prev) => [...prev, { ...data.student, earnedBadgeIds: [] }]);
+        setLocalStudents((prev) => [...prev, { ...data.student, earnedBadgeIds: [], completedMissions: {} }]);
       } else {
         setLocalPendingEmails((prev) => [...prev, data.email]);
       }
@@ -244,26 +260,36 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     }
   }
 
-  async function toggleAward(studentId: string, badgeId: string, currentlyEarned: boolean) {
-    const method = currentlyEarned ? "DELETE" : "POST";
-    const res = await fetch(`/api/badges/${badgeId}/award`, {
+  async function toggleMission(studentId: string, badgeId: string, missionIndex: number, currentlyCompleted: boolean) {
+    const key = `${studentId}:${badgeId}:${missionIndex}`;
+    setSavingMission(key);
+    const method = currentlyCompleted ? "DELETE" : "POST";
+    const res = await fetch(`/api/badges/${badgeId}/missions`, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ studentId, missionIndex }),
     });
     if (res.ok) {
+      const { earned } = await res.json();
       setLocalStudents((prev) =>
         prev.map((s) => {
           if (s.id !== studentId) return s;
+          const prevForBadge = s.completedMissions[badgeId] ?? [];
+          const nextForBadge = currentlyCompleted
+            ? prevForBadge.filter((i) => i !== missionIndex)
+            : [...prevForBadge, missionIndex];
+          const earnedIds = earned
+            ? Array.from(new Set([...s.earnedBadgeIds, badgeId]))
+            : s.earnedBadgeIds.filter((id) => id !== badgeId);
           return {
             ...s,
-            earnedBadgeIds: currentlyEarned
-              ? s.earnedBadgeIds.filter((id) => id !== badgeId)
-              : [...s.earnedBadgeIds, badgeId],
+            completedMissions: { ...s.completedMissions, [badgeId]: nextForBadge },
+            earnedBadgeIds: earnedIds,
           };
         })
       );
     }
+    setSavingMission(null);
   }
 
   async function searchTeachers() {
@@ -522,30 +548,75 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
 
                   {isExpanded && (
                     <div className="border-t border-gray-100 px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Award Badges</p>
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Mission Progress</p>
                       <div className="space-y-2">
                         {localBadges.map((badge) => {
                           const earned = student.earnedBadgeIds.includes(badge.id);
+                          const missions = parseMissions(badge.missions);
+                          const completed = student.completedMissions[badge.id] ?? [];
+                          const completedSet = new Set(completed);
+                          const badgeKey = `${student.id}:${badge.id}`;
+                          const badgeOpen = expandedBadgeKey === badgeKey;
                           return (
-                            <div key={badge.id} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="relative w-8 h-8">
-                                  <Image src={badge.imageUrl} alt={badge.name} fill className={cn("object-contain", !earned && "grayscale opacity-40")} sizes="32px" />
+                            <div key={badge.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedBadgeKey(badgeOpen ? null : badgeKey)}
+                                className="w-full flex items-center gap-3 p-2.5 text-left hover:bg-gray-50 transition-colors"
+                              >
+                                <div className="relative w-9 h-9 shrink-0">
+                                  <Image
+                                    src={badge.imageUrl}
+                                    alt={badge.name}
+                                    fill
+                                    className={cn("object-contain", !earned && "grayscale opacity-40")}
+                                    sizes="36px"
+                                  />
                                 </div>
-                                <span className="text-sm text-gray-700">{badge.name}</span>
-                              </div>
-                              {isOwner && (
-                                <button
-                                  onClick={() => toggleAward(student.id, badge.id, earned)}
-                                  className={cn(
-                                    "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors",
-                                    earned
-                                      ? "bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-600"
-                                      : "bg-gray-100 text-gray-600 hover:bg-primary hover:text-white"
-                                  )}
-                                >
-                                  {earned ? <><Check size={12} /> Earned</> : "Award"}
-                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{badge.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {completedSet.size}/{missions.length} missions
+                                  </p>
+                                </div>
+                                {earned && (
+                                  <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                    <Check size={12} /> Earned
+                                  </span>
+                                )}
+                                {badgeOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                              </button>
+
+                              {badgeOpen && (
+                                <ul className="border-t border-gray-100 px-3 py-2 space-y-1 bg-gray-50/50">
+                                  {missions.map((mission, i) => {
+                                    const done = completedSet.has(i);
+                                    const key = `${student.id}:${badge.id}:${i}`;
+                                    const saving = savingMission === key;
+                                    return (
+                                      <li key={i}>
+                                        <button
+                                          type="button"
+                                          disabled={!isOwner || saving}
+                                          onClick={() => toggleMission(student.id, badge.id, i, done)}
+                                          className={cn(
+                                            "w-full flex items-start gap-2 text-left text-sm py-1.5 px-1.5 rounded-md transition-colors",
+                                            isOwner && !saving && "hover:bg-white",
+                                            saving && "opacity-60",
+                                            done ? "text-gray-700" : "text-gray-600",
+                                          )}
+                                        >
+                                          {done ? (
+                                            <CheckSquare size={16} className="mt-0.5 shrink-0 text-primary" />
+                                          ) : (
+                                            <Square size={16} className="mt-0.5 shrink-0 text-gray-400" />
+                                          )}
+                                          <span className={cn(done && "line-through text-gray-500")}>{mission}</span>
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
                               )}
                             </div>
                           );
@@ -738,7 +809,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
 
             {/* Missions */}
             <div className="mb-5">
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Missions</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Missions *</label>
               <div className="space-y-2">
                 {editMissions.map((mission, i) => (
                   <div key={i} className="flex gap-2">

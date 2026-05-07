@@ -10,6 +10,7 @@ interface Badge {
   imageUrl: string;
   missions: string;
   earned: boolean;
+  completedMissionIndices: number[];
 }
 
 export function BadgesGrid({ badges }: { badges: Badge[] }) {
@@ -39,6 +40,7 @@ export function BadgesGrid({ badges }: { badges: Badge[] }) {
         <BadgeModal
           badge={selected}
           earned={selected.earned}
+          completedMissionIndices={selected.completedMissionIndices}
           onClose={() => setSelected(null)}
         />
       )}

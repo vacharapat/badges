@@ -22,11 +22,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
+  const cleanMissions = missions.map((m: string) => m.trim()).filter(Boolean);
+  if (cleanMissions.length === 0) {
+    return NextResponse.json({ error: "At least one mission is required" }, { status: 400 });
+  }
+
   const badge = await prisma.badge.create({
     data: {
       name: name.trim(),
       imageUrl,
-      missions: JSON.stringify(missions.filter((m: string) => m.trim())),
+      missions: JSON.stringify(cleanMissions),
       courseId: id,
     },
   });

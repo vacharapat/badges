@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { X, Circle } from "lucide-react";
+import { X, Circle, CheckCircle2 } from "lucide-react";
 import { parseMissions } from "@/lib/utils";
 
 interface BadgeModalProps {
@@ -11,11 +11,13 @@ interface BadgeModalProps {
     missions: string;
   };
   earned: boolean;
+  completedMissionIndices?: number[];
   onClose: () => void;
 }
 
-export function BadgeModal({ badge, earned, onClose }: BadgeModalProps) {
+export function BadgeModal({ badge, earned, completedMissionIndices, onClose }: BadgeModalProps) {
   const missions = parseMissions(badge.missions);
+  const completed = new Set(completedMissionIndices ?? []);
 
   return (
     <div
@@ -53,14 +55,23 @@ export function BadgeModal({ badge, earned, onClose }: BadgeModalProps) {
 
         {missions.length > 0 && (
           <div>
-            <p className="font-semibold text-gray-700 mb-3">Missions:</p>
+            <p className="font-semibold text-gray-700 mb-3">
+              Missions{completedMissionIndices ? ` (${completed.size}/${missions.length})` : ""}:
+            </p>
             <ul className="space-y-2">
-              {missions.map((m, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                  <Circle size={8} className="mt-1.5 shrink-0 fill-gray-400 text-gray-400" />
-                  <span>{m}</span>
-                </li>
-              ))}
+              {missions.map((m, i) => {
+                const done = completed.has(i);
+                return (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    {done ? (
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+                    ) : (
+                      <Circle size={8} className="mt-1.5 shrink-0 fill-gray-400 text-gray-400" />
+                    )}
+                    <span className={done ? "text-gray-700" : "text-gray-600"}>{m}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

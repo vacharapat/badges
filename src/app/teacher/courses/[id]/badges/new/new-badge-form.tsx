@@ -48,7 +48,12 @@ export function NewBadgeForm({ courseId }: { courseId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const cleanMissions = missions.map((m) => m.trim()).filter(Boolean);
     if (!name.trim() || !imageUrl) return;
+    if (cleanMissions.length === 0) {
+      setError("Add at least one mission.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -59,7 +64,7 @@ export function NewBadgeForm({ courseId }: { courseId: string }) {
       body: JSON.stringify({
         name,
         imageUrl,
-        missions: missions.filter((m) => m.trim()),
+        missions: cleanMissions,
       }),
     });
 
@@ -118,7 +123,7 @@ export function NewBadgeForm({ courseId }: { courseId: string }) {
 
       {/* Missions */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Missions</label>
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Missions *</label>
         <div className="space-y-2">
           {missions.map((mission, i) => (
             <div key={i} className="flex gap-2">

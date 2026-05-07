@@ -25,6 +25,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
       badges: {
         include: {
           studentBadges: { where: { studentId: session.user.id } },
+          studentMissions: { where: { studentId: session.user.id }, select: { missionIndex: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -41,6 +42,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
     imageUrl: b.imageUrl,
     missions: b.missions,
     earned: b.studentBadges.length > 0,
+    completedMissionIndices: b.studentMissions.map((m) => m.missionIndex),
   }));
 
   return (
