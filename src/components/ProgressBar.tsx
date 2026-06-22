@@ -1,16 +1,17 @@
 interface ProgressBarProps {
   earned: number;
   total: number;
+  label?: string;
 }
 
-export function ProgressBar({ earned, total }: ProgressBarProps) {
+export function ProgressBar({ earned, total, label = "Badges Collected" }: ProgressBarProps) {
   const pct = total === 0 ? 0 : Math.round((earned / total) * 100);
 
   return (
     <div className="px-4 py-3 bg-white border-b border-gray-100">
       <div className="max-w-lg mx-auto">
         <p className="text-sm font-semibold text-gray-700 mb-2">
-          Badges Collected:{" "}
+          {label}:{" "}
           <span className="text-primary">
             {earned} / {total}
           </span>

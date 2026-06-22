@@ -33,24 +33,57 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   });
   if (!course) notFound();
 
-  const total = course.badges.length;
-  const earned = course.badges.filter((b) => b.studentBadges.length > 0).length;
-
   const badges = course.badges.map((b) => ({
     id: b.id,
     name: b.name,
     imageUrl: b.imageUrl,
     missions: b.missions,
+    type: b.type,
     earned: b.studentBadges.length > 0,
     completedMissionIndices: b.studentMissions.map((m) => m.missionIndex),
   }));
 
+  const requiredBadges = badges.filter((b) => b.type !== "OPTIONAL");
+  const optionalBadges = badges.filter((b) => b.type === "OPTIONAL");
+
+  const requiredEarned = requiredBadges.filter((b) => b.earned).length;
+  const optionalEarned = optionalBadges.filter((b) => b.earned).length;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <CourseHeader courseName={course.name} />
-      <ProgressBar earned={earned} total={total} />
-      <main className="max-w-lg mx-auto px-4 py-4">
-        <BadgesGrid badges={badges} />
+      <main className="max-w-lg mx-auto pb-4">
+        {badges.length === 0 ? (
+          <p className="text-center text-gray-400 py-12">No badges in this course yet.</p>
+        ) : (
+          <>
+            {requiredBadges.length > 0 && (
+              <section>
+                <ProgressBar
+                  earned={requiredEarned}
+                  total={requiredBadges.length}
+                  label="Required"
+                />
+                <div className="px-4 py-4">
+                  <BadgesGrid badges={requiredBadges} />
+                </div>
+              </section>
+            )}
+
+            {optionalBadges.length > 0 && (
+              <section>
+                <ProgressBar
+                  earned={optionalEarned}
+                  total={optionalBadges.length}
+                  label="Optional"
+                />
+                <div className="px-4 py-4">
+                  <BadgesGrid badges={optionalBadges} />
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </main>
       <Navbar />
     </div>

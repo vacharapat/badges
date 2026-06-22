@@ -43,3 +43,6 @@ prisma/*.db-journal
 # uploads
 public/uploads/*
 !public/uploads/.gitkeep
+
+# local student data exports (sensitive — never commit)
+students/

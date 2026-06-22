@@ -17,10 +17,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { name, imageUrl, missions } = await req.json();
+  const { name, imageUrl, missions, type } = await req.json();
   if (!name?.trim() || !imageUrl || !Array.isArray(missions)) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
+
+  const badgeType = type === "OPTIONAL" ? "OPTIONAL" : "REQUIRED";
 
   const cleanMissions = missions.map((m: string) => m.trim()).filter(Boolean);
   if (cleanMissions.length === 0) {
@@ -32,6 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       name: name.trim(),
       imageUrl,
       missions: JSON.stringify(cleanMissions),
+      type: badgeType,
       courseId: id,
     },
   });

@@ -20,7 +20,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { name, imageUrl, missions } = await req.json();
+  const { name, imageUrl, missions, type } = await req.json();
+
+  const newType = type === undefined ? undefined : type === "OPTIONAL" ? "OPTIONAL" : "REQUIRED";
 
   let newMissions: string[] | undefined;
   if (missions !== undefined) {
@@ -39,6 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(name && { name: name.trim() }),
       ...(imageUrl && { imageUrl }),
       ...(newMissions && { missions: JSON.stringify(newMissions) }),
+      ...(newType && { type: newType }),
     },
   });
 

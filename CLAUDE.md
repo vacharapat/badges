@@ -84,22 +84,24 @@ Both pending records live in `PendingRole` and `PendingEnrollment` tables and ar
 
 **Teacher creates a course:**
 1. `/teacher/courses` → New → fill name/description
-2. Course page → add Badge (upload image, name, **at least one mission** — required)
+2. Course page → add Badge (upload image, name, **badge type** — Required (needed to pass) or Optional (extra for a better grade), **at least one mission** — required)
 3. Course page → Badges tab → pencil icon to edit, trash icon to delete a badge
 4. Course page → Students tab → Add Student → type any `@ku.th` email → Enroll (works even if student hasn't logged in yet)
 5. Students tab → expand a student → expand a badge → tick each mission as the student completes it. The badge is **automatically awarded** when every mission is checked, and revoked if a mission is later unchecked.
 
 **Student tracks progress:**
-1. `/courses` → see all enrolled courses with progress bars
-2. Click a course → badge grid (earned = color, locked = gray)
+1. `/courses` → see all enrolled courses; the progress bar tracks **Required** badges (passing), with optional badges shown as a secondary count
+2. Click a course → two sections, **Required** and **Optional**, each with its own progress bar and badge grid (earned = color, locked = gray)
 3. Tap any badge → modal showing missions list
+
+**Badge types:** every badge is either `REQUIRED` (needed to pass the course) or `OPTIONAL` (extra for a better grade), stored in `Badge.type` (defaults to `REQUIRED`). Set on the create/edit badge forms. The teacher Badges tab groups badges under Required/Optional headings.
 
 ## Project structure
 
 ```
 badge_app/
 ├── prisma/
-│   ├── schema.prisma       # DB models: User, Course, Badge, Enrollment, StudentBadge, StudentMission, PendingEnrollment, PendingRole
+│   ├── schema.prisma       # DB models: User, Course, Badge (has type: REQUIRED|OPTIONAL), Enrollment, StudentBadge, StudentMission, PendingEnrollment, PendingRole
 │   └── seed.ts             # Seeds the ADMIN_EMAIL user as ADMIN role
 ├── src/
 │   ├── lib/

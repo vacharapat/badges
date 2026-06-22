@@ -79,6 +79,7 @@ export default async function TeacherCoursePage({ params }: { params: Promise<{ 
     name: b.name,
     imageUrl: b.imageUrl,
     missions: b.missions,
+    type: b.type,
     awardedCount: b._count.studentBadges,
   }));
 

@@ -92,6 +92,7 @@ model Badge {
   name      String
   imageUrl  String
   missions  String
+  type      String   @default("REQUIRED") // "REQUIRED" (needed to pass) | "OPTIONAL" (extra for a better grade)
   createdAt DateTime @default(now())
 
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)

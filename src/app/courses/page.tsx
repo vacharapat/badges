@@ -46,8 +46,11 @@ export default async function CoursesPage() {
           </div>
         ) : (
           enrollments.map(({ course }) => {
-            const total = course.badges.length;
-            const earned = course.badges.filter((b) => b.studentBadges.length > 0).length;
+            const requiredBadges = course.badges.filter((b) => b.type !== "OPTIONAL");
+            const optionalBadges = course.badges.filter((b) => b.type === "OPTIONAL");
+            const total = requiredBadges.length;
+            const earned = requiredBadges.filter((b) => b.studentBadges.length > 0).length;
+            const optionalEarned = optionalBadges.filter((b) => b.studentBadges.length > 0).length;
             const pct = total === 0 ? 0 : Math.round((earned / total) * 100);
 
             return (
@@ -79,7 +82,12 @@ export default async function CoursesPage() {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-1.5">{pct}% complete</p>
+                <p className="text-xs text-gray-400 mt-1.5">
+                  {total === 0 ? "No required badges" : `${pct}% of required badges`}
+                  {optionalBadges.length > 0 && (
+                    <span> · {optionalEarned}/{optionalBadges.length} optional</span>
+                  )}
+                </p>
               </Link>
             );
           })

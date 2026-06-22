@@ -14,6 +14,7 @@ interface Badge {
   name: string;
   imageUrl: string;
   missions: string;
+  type: string;
   awardedCount: number;
 }
 
@@ -70,6 +71,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
   const [editName, setEditName] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editImagePreview, setEditImagePreview] = useState("");
+  const [editType, setEditType] = useState<"REQUIRED" | "OPTIONAL">("REQUIRED");
   const [editMissions, setEditMissions] = useState<string[]>([]);
   const [editUploading, setEditUploading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -133,6 +135,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     setEditName(badge.name);
     setEditImageUrl(badge.imageUrl);
     setEditImagePreview(badge.imageUrl);
+    setEditType(badge.type === "OPTIONAL" ? "OPTIONAL" : "REQUIRED");
     const parsed = parseMissions(badge.missions);
     setEditMissions(parsed.length > 0 ? parsed : [""]);
     setEditError("");
@@ -174,6 +177,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
       body: JSON.stringify({
         name: editName,
         imageUrl: editImageUrl,
+        type: editType,
         missions: cleanMissions,
       }),
     });
@@ -181,7 +185,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
       setLocalBadges((prev) =>
         prev.map((b) =>
           b.id === editingBadge.id
-            ? { ...b, name: editName, imageUrl: editImageUrl, missions: JSON.stringify(cleanMissions) }
+            ? { ...b, name: editName, imageUrl: editImageUrl, type: editType, missions: JSON.stringify(cleanMissions) }
             : b
         )
       );
@@ -339,6 +343,52 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
     }
   }
 
+  const requiredBadges = localBadges.filter((b) => b.type !== "OPTIONAL");
+  const optionalBadges = localBadges.filter((b) => b.type === "OPTIONAL");
+
+  function renderBadgeRow(badge: Badge) {
+    return (
+      <div
+        key={badge.id}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4"
+      >
+        <div className="relative w-14 h-14 shrink-0">
+          <Image src={badge.imageUrl} alt={badge.name} fill className="object-contain" sizes="56px" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 truncate">{badge.name}</p>
+          <p className="text-sm text-gray-500">{badge.awardedCount} awarded</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedBadge(badge)}
+            className="text-xs text-primary font-semibold hover:underline"
+          >
+            View
+          </button>
+          {isOwner && (
+            <>
+              <button
+                onClick={() => openEditBadge(badge)}
+                className="text-gray-400 hover:text-primary transition-colors"
+                title="Edit badge"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={() => deleteBadge(badge.id)}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+                title="Delete badge"
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Header */}
@@ -417,56 +467,33 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
 
       {/* Badges tab */}
       {tab === "badges" && (
-        <div className="px-4 py-4 space-y-3">
+        <div className="px-4 py-4 space-y-5">
           {localBadges.length === 0 ? (
             <p className="text-center text-gray-400 py-12">No badges yet. Add your first badge.</p>
           ) : (
-            localBadges.map((badge) => (
-              <div
-                key={badge.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4"
-              >
-                <div className="relative w-14 h-14 shrink-0">
-                  <Image
-                    src={badge.imageUrl}
-                    alt={badge.name}
-                    fill
-                    className="object-contain"
-                    sizes="56px"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{badge.name}</p>
-                  <p className="text-sm text-gray-500">{badge.awardedCount} awarded</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedBadge(badge)}
-                    className="text-xs text-primary font-semibold hover:underline"
-                  >
-                    View
-                  </button>
-                  {isOwner && (
-                    <>
-                      <button
-                        onClick={() => openEditBadge(badge)}
-                        className="text-gray-400 hover:text-primary transition-colors"
-                        title="Edit badge"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => deleteBadge(badge.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete badge"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </>
-                  )}
-                </div>
+            <>
+              <div className="space-y-3">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                  Required <span className="text-gray-300">· {requiredBadges.length}</span>
+                </h2>
+                {requiredBadges.length === 0 ? (
+                  <p className="text-sm text-gray-400">No required badges yet.</p>
+                ) : (
+                  requiredBadges.map(renderBadgeRow)
+                )}
               </div>
-            ))
+
+              <div className="space-y-3">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                  Optional <span className="text-gray-300">· {optionalBadges.length}</span>
+                </h2>
+                {optionalBadges.length === 0 ? (
+                  <p className="text-sm text-gray-400">No optional badges yet.</p>
+                ) : (
+                  optionalBadges.map(renderBadgeRow)
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -805,6 +832,32 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
                 onChange={(e) => setEditName(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
+            </div>
+
+            {/* Type */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Badge Type *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: "REQUIRED", title: "Required", desc: "Needed to pass" },
+                  { value: "OPTIONAL", title: "Optional", desc: "Extra for a better grade" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditType(opt.value)}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                      editType === opt.value
+                        ? "border-primary bg-primary/5 ring-2 ring-primary"
+                        : "border-gray-300 hover:border-gray-400"
+                    )}
+                  >
+                    <p className="text-sm font-semibold text-gray-800">{opt.title}</p>
+                    <p className="text-xs text-gray-500">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Missions */}
