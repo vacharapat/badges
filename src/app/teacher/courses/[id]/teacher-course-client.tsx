@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft, Square, CheckSquare } from "lucide-react";
+import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft, Square, CheckSquare, Search } from "lucide-react";
 import { BadgeModal } from "@/components/BadgeModal";
 import { cn } from "@/lib/utils";
 import { parseMissions } from "@/lib/utils";
@@ -49,6 +49,7 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
   const [tab, setTab] = useState<"badges" | "students" | "teachers">("badges");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
   const [expandedBadgeKey, setExpandedBadgeKey] = useState<string | null>(null);
   const [savingMission, setSavingMission] = useState<string | null>(null);
   const [localStudents, setLocalStudents] = useState(students);
@@ -346,6 +347,27 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
   const requiredBadges = localBadges.filter((b) => b.type !== "OPTIONAL");
   const optionalBadges = localBadges.filter((b) => b.type === "OPTIONAL");
 
+  const studentQuery = studentSearch.trim().toLowerCase();
+  const filteredStudents = studentQuery
+    ? localStudents.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(studentQuery) ||
+          s.email?.toLowerCase().includes(studentQuery)
+      )
+    : localStudents;
+  const filteredPendingEmails = studentQuery
+    ? localPendingEmails.filter((e) => e.toLowerCase().includes(studentQuery))
+    : localPendingEmails;
+
+  // Auto-expand a student when the search narrows to a single match.
+  const soleMatchId =
+    studentQuery && filteredStudents.length === 1 && filteredPendingEmails.length === 0
+      ? filteredStudents[0].id
+      : null;
+  useEffect(() => {
+    if (soleMatchId) setExpandedStudent(soleMatchId);
+  }, [soleMatchId]);
+
   function renderBadgeRow(badge: Badge) {
     return (
       <div
@@ -542,7 +564,29 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
           {localStudents.length === 0 && localPendingEmails.length === 0 ? (
             <p className="text-center text-gray-400 py-8">No students enrolled yet.</p>
           ) : (
-            localStudents.map((student) => {
+            <>
+            <div className="relative mb-2">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder="Search students by name or email..."
+                className="w-full border border-gray-300 rounded-xl pl-9 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {studentSearch && (
+                <button
+                  onClick={() => setStudentSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {filteredStudents.length === 0 && filteredPendingEmails.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No students match &ldquo;{studentSearch}&rdquo;.</p>
+            ) : (
+            filteredStudents.map((student) => {
               const isExpanded = expandedStudent === student.id;
               return (
                 <div key={student.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -662,14 +706,14 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
                 </div>
               );
             })
-          )}
+            )}
 
-          {localPendingEmails.length > 0 && (
+          {filteredPendingEmails.length > 0 && (
             <div className="mt-2">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
                 Pending — will enroll on first sign-in
               </p>
-              {localPendingEmails.map((email) => (
+              {filteredPendingEmails.map((email) => (
                 <div
                   key={email}
                   className="bg-white rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-3"
@@ -692,6 +736,8 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
                 </div>
               ))}
             </div>
+          )}
+            </>
           )}
         </div>
       )}
