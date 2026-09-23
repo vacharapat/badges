@@ -88,6 +88,7 @@ Both pending records live in `PendingRole` and `PendingEnrollment` tables and ar
 3. Course page → Badges tab → pencil icon to edit, trash icon to delete a badge
 4. Course page → Students tab → Add Student → type any `@ku.th` email → Enroll (works even if student hasn't logged in yet)
 5. Students tab → expand a student → expand a badge → tick each mission as the student completes it. The badge is **automatically awarded** when every mission is checked, and revoked if a mission is later unchecked.
+6. Course header → download icon → downloads a CSV report (name, email, Yes/No per badge) for every enrolled student in the course.
 
 **Student tracks progress:**
 1. `/courses` → see all enrolled courses; the progress bar tracks **Required** badges (passing), with optional badges shown as a secondary count
@@ -134,6 +135,7 @@ badge_app/
 │           ├── courses/[id]/route.ts         # GET, PATCH, DELETE
 │           ├── courses/[id]/badges/route.ts  # POST (add badge to course)
 │           ├── courses/[id]/enrollments/route.ts # GET (pending emails), POST (enroll by email), DELETE
+│           ├── courses/[id]/report/route.ts  # GET — CSV export: name, email, Yes/No per badge for all enrolled students
 │           ├── badges/[id]/route.ts          # PATCH, DELETE
 │           ├── badges/[id]/missions/route.ts # POST/DELETE — toggle a mission for a student; auto-awards badge when all missions complete
 │           ├── admin/users/route.ts          # GET (all users), PATCH (change role)
