@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft, Square, CheckSquare, Search } from "lucide-react";
+import { Award, Users, ChevronDown, ChevronUp, Check, UserPlus, Trash2, GraduationCap, Pencil, Plus, Upload, X, ChevronLeft, Square, CheckSquare, Search, Download } from "lucide-react";
 import { BadgeModal } from "@/components/BadgeModal";
 import { cn } from "@/lib/utils";
 import { parseMissions } from "@/lib/utils";
@@ -427,6 +427,13 @@ export function TeacherCourseClient({ courseId, courseName, courseDescription, b
           </div>
           {isOwner && (
             <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={`/api/courses/${courseId}/report`}
+                className="text-blue-200 hover:text-white transition-colors"
+                title="Download CSV report"
+              >
+                <Download size={18} />
+              </a>
               <button
                 onClick={openEditCourse}
                 className="text-blue-200 hover:text-white transition-colors"
